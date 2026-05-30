@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Quest Log — Welcome Home </title>
+<title>Quest Log — Arise & Shine</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
@@ -161,11 +161,21 @@
   <!-- LOGIN (parent) -->
   <div id="screen-login" class="hidden">
     <div class="panelbox">
-      <div class="brand">✨ Welcome Home
+      <div class="brand">✨ Arise &amp; Shine</div>
       <h1>Parent sign-in</h1>
-      <p class="sub">Enter your email and we'll send a one-tap sign-in link. No password to remember.</p>
-      <input class="field" id="loginEmail" type="email" inputmode="email" placeholder="you@email.com" autocomplete="email">
-      <button class="pbtn" id="loginBtn" onclick="sendMagic()">Send my sign-in link</button>
+      <!-- step 1: email -->
+      <div id="loginStep1">
+        <p class="sub">Enter your email and we'll send you a 6-digit code. No password to remember.</p>
+        <input class="field" id="loginEmail" type="email" inputmode="email" placeholder="you@email.com" autocomplete="email">
+        <button class="pbtn" id="loginBtn" onclick="sendCode()">Send my code</button>
+      </div>
+      <!-- step 2: code -->
+      <div id="loginStep2" class="hidden">
+        <p class="sub">Check your email for a 6-digit code and type it in below.</p>
+        <input class="field" id="loginCode" type="tel" inputmode="numeric" maxlength="6" placeholder="123456" style="letter-spacing:8px;text-align:center;font-size:22px">
+        <button class="pbtn" id="verifyBtn" onclick="verifyCode()">Verify &amp; sign in</button>
+        <button class="pbtn ghost" style="margin-top:8px" onclick="backToEmail()">← Use a different email</button>
+      </div>
       <p class="note" id="loginMsg">You only need to do this once per device — the kid's device stays signed in afterward.</p>
     </div>
   </div>
@@ -269,8 +279,8 @@ function xpNeeded(l){return 100+(l-1)*60}
 function avatarFor(l){if(l>=12)return['🐲','Elder Dragon'];if(l>=9)return['🐉','Mighty Dragon'];if(l>=6)return['🦅','Sky Hunter'];if(l>=4)return['🦎','Wyrmling'];if(l>=2)return['🐣','Hatchling'];return['🥚','Mystery Egg'];}
 
 /* ============ CONFIG — REPLACE THESE TWO VALUES ============ */
-const SUPABASE_URL = 'https://knlcbqksuiadxvvedzne.supabase.co';        // e.g. https://abcd1234.supabase.co
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtubGNicWtzdWlhZHh2dmVkem5lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTM2ODIsImV4cCI6MjA5NTY2OTY4Mn0.RrUcvC39UOjUIh-bGyNBK4leXfkXkzmZPBIBPWJt7O4';
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';        // e.g. https://abcd1234.supabase.co
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
 /* ========================================================== */
 
 let sb=null, profiles=[], currentProfile=null, S=defaultState();
@@ -286,36 +296,71 @@ function showScreen(name){
   if(name==='profile')renderProfiles();
 }
 
-/* ============ AUTH ============ */
-async function boot(){
-  if(!configured()){showScreen('setup');return;}
-  sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
-  const {data:{session}}=await sb.auth.getSession();
-  sb.auth.onAuthStateChange((_e,s)=>{ if(s){afterLogin();} else {showScreen('login');} });
-  if(session){afterLogin();} else {showScreen('login');}
+/* show a visible error on the login screen instead of going blank */
+function showFatal(msg){
+  showScreen('login');
+  backToEmail();
+  const m=document.getElementById('loginMsg');
+  if(m)m.innerHTML='⚠️ '+esc(msg);
 }
-async function sendMagic(){
+
+/* ============ AUTH ============ */
+let pendingEmail='';
+async function boot(){
+  try{
+    if(!configured()){showScreen('setup');return;}
+    sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+    sb.auth.onAuthStateChange((_e,s)=>{ if(!s){showScreen('login');} });
+    const {data:{session}}=await sb.auth.getSession();
+    if(session){afterLogin();} else {showScreen('login');}
+  }catch(e){ showFatal('Could not start: '+(e&&e.message?e.message:e)); }
+}
+function backToEmail(){
+  document.getElementById('loginStep1').classList.remove('hidden');
+  document.getElementById('loginStep2').classList.add('hidden');
+}
+async function sendCode(){
   const email=document.getElementById('loginEmail').value.trim();
   if(!email){toast('Enter your email first');return;}
+  pendingEmail=email;
   const btn=document.getElementById('loginBtn'); btn.disabled=true; btn.textContent='Sending…';
   try{
-    const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:window.location.href.split('#')[0]}});
+    const {error}=await sb.auth.signInWithOtp({email,options:{shouldCreateUser:true}});
     if(error)throw error;
-    document.getElementById('loginMsg').innerHTML='📬 Check your email and tap the sign-in link. You can close this once you do.';
+    document.getElementById('loginStep1').classList.add('hidden');
+    document.getElementById('loginStep2').classList.remove('hidden');
+    document.getElementById('loginMsg').innerHTML='📬 We emailed a 6-digit code to <b>'+esc(email)+'</b>. It may take a minute.';
+    setTimeout(()=>{const c=document.getElementById('loginCode');if(c)c.focus();},100);
   }catch(e){document.getElementById('loginMsg').textContent='Something went wrong: '+e.message;}
-  btn.disabled=false; btn.textContent='Send my sign-in link';
+  btn.disabled=false; btn.textContent='Send my code';
 }
-async function signOut(){ if(sb)await sb.auth.signOut(); try{localStorage.removeItem(LAST_KEY);}catch(e){} }
+async function verifyCode(){
+  const token=document.getElementById('loginCode').value.trim();
+  if(token.length<6){toast('Enter the 6-digit code');return;}
+  const btn=document.getElementById('verifyBtn'); btn.disabled=true; btn.textContent='Checking…';
+  try{
+    const {error}=await sb.auth.verifyOtp({email:pendingEmail,token,type:'email'});
+    if(error)throw error;
+    // session is now set; afterLogin proceeds
+    afterLogin();
+  }catch(e){
+    document.getElementById('loginMsg').textContent='That code didn\u2019t work: '+e.message+' — try again or resend.';
+    btn.disabled=false; btn.textContent='Verify & sign in';
+  }
+}
+async function signOut(){ if(sb)await sb.auth.signOut(); try{localStorage.removeItem(LAST_KEY);}catch(e){} showScreen('login'); backToEmail(); }
 
 async function afterLogin(){
-  await loadProfiles();
-  let last=null; try{last=localStorage.getItem(LAST_KEY);}catch(e){}
-  const p=profiles.find(x=>x.id===last);
-  if(p){openProfile(p);} else {showScreen('profile');}
+  try{
+    await loadProfiles();
+    let last=null; try{last=localStorage.getItem(LAST_KEY);}catch(e){}
+    const p=profiles.find(x=>x.id===last);
+    if(p){openProfile(p);} else {showScreen('profile');}
+  }catch(e){ showFatal('Signed in, but could not load data: '+(e&&e.message?e.message:e)); }
 }
 async function loadProfiles(){
   const {data,error}=await sb.from('profiles').select('*').order('created_at',{ascending:true});
-  if(error){toast('Load error: '+error.message);profiles=[];return;}
+  if(error){throw new Error(error.message);}
   profiles=data||[];
 }
 
@@ -453,7 +498,12 @@ function closeModal(){document.getElementById('modal').classList.remove('show');
 function confetti(n){const c=['#ffce4a','#5ce0a0','#ff6b9d','#5ad1ff','#9d8cff','#ff8a4c'],ic=['🎉','✨','⭐','🌟','🎊'];for(let i=0;i<n;i++){const d=document.createElement('div');d.className='conf';d.textContent=ic[i%ic.length];d.style.left=Math.random()*100+'vw';d.style.color=c[i%c.length];d.style.animationDuration=(1.6+Math.random()*1.4)+'s';d.style.fontSize=(14+Math.random()*16)+'px';document.body.appendChild(d);setTimeout(()=>d.remove(),3200);}}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 
-document.addEventListener('keydown',e=>{if(e.key==='Enter'&&!document.getElementById('screen-login').classList.contains('hidden'))sendMagic();});
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter')return;
+  if(document.getElementById('screen-login').classList.contains('hidden'))return;
+  if(!document.getElementById('loginStep2').classList.contains('hidden')){verifyCode();}
+  else{sendCode();}
+});
 boot();
 </script>
 </body>
