@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quest Log — Arise & Shine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<!-- Supabase client -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg-1:#131124; --bg-2:#241a40; --bg-3:#0e0d1d;
+    --panel:rgba(255,255,255,.055); --panel-solid:#211d3f;
+    --border:rgba(255,255,255,.10);
+    --gold:#ffce4a; --green:#5ce0a0; --orange:#ff8a4c;
+    --coral:#ff6b9d; --blue:#5ad1ff; --violet:#9d8cff;
+    --text:#f4f1ff; --muted:#a9a3d0;
+    --display:'Fredoka','Trebuchet MS',system-ui,sans-serif;
+    --body:'Nunito','Trebuchet MS',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0}
+  body{
+    font-family:var(--body); color:var(--text); min-height:100vh;
+    background:
+      radial-gradient(900px 500px at 80% -10%, rgba(157,140,255,.22), transparent 60%),
+      radial-gradient(700px 500px at 0% 110%, rgba(90,209,255,.16), transparent 55%),
+      linear-gradient(160deg,var(--bg-2),var(--bg-1) 45%,var(--bg-3));
+    background-attachment:fixed; padding:18px 14px 60px;
+  }
+  .stars{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+  .stars i{position:absolute;width:3px;height:3px;border-radius:50%;background:#fff;opacity:.5;animation:tw 3s infinite ease-in-out}
+  @keyframes tw{0%,100%{opacity:.15;transform:scale(.7)}50%{opacity:.9;transform:scale(1.1)}}
+  .wrap{position:relative;z-index:1;max-width:560px;margin:0 auto}
+
+  /* shared cards */
+  .panelbox{background:linear-gradient(150deg,rgba(157,140,255,.16),rgba(90,209,255,.08));
+    border:1px solid var(--border);border-radius:24px;padding:26px 22px;text-align:center;
+    box-shadow:0 18px 40px -22px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.07);backdrop-filter:blur(6px)}
+  .brand{font-family:var(--display);font-weight:700;letter-spacing:.5px;font-size:14px;color:var(--violet);text-transform:uppercase}
+  .panelbox h1{font-family:var(--display);font-weight:700;font-size:28px;margin:10px 0 4px}
+  .panelbox p.sub{color:var(--muted);font-weight:700;margin:0 0 20px;font-size:14px;line-height:1.5}
+  .field{width:100%;font-family:var(--body);font-weight:700;background:rgba(0,0,0,.3);border:1px solid var(--border);
+    color:var(--text);border-radius:12px;padding:13px 14px;font-size:16px;margin-bottom:10px}
+  .pbtn{font-family:var(--display);font-weight:600;font-size:16px;border:none;border-radius:14px;padding:13px 24px;
+    cursor:pointer;background:linear-gradient(135deg,var(--violet),var(--coral));color:#fff;width:100%;transition:.15s}
+  .pbtn:active{transform:scale(.97)} .pbtn.ghost{background:var(--panel);border:1px solid var(--border);color:var(--text)}
+  .note{font-size:12px;color:var(--muted);margin-top:14px;line-height:1.6}
+  .codez{font-family:ui-monospace,Menlo,Consolas,monospace;background:rgba(0,0,0,.35);padding:2px 6px;border-radius:6px;font-size:12px;color:var(--blue)}
+
+  /* HERO */
+  .hero{background:linear-gradient(150deg,rgba(157,140,255,.18),rgba(90,209,255,.10));border:1px solid var(--border);
+    border-radius:24px;padding:18px;box-shadow:0 18px 40px -22px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.07);backdrop-filter:blur(6px)}
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  .title{font-family:var(--display);font-weight:700;letter-spacing:.5px;font-size:14px;color:var(--violet);text-transform:uppercase;display:flex;align-items:center;gap:7px}
+  .title .dot{width:8px;height:8px;border-radius:50%;background:var(--coral);box-shadow:0 0 12px var(--coral)}
+  .switchbtn{font-family:var(--body);font-weight:800;font-size:12px;background:var(--panel);border:1px solid var(--border);color:var(--muted);border-radius:20px;padding:6px 12px;cursor:pointer}
+  .heroRow{display:flex;align-items:center;gap:14px}
+  .avatar{font-size:46px;line-height:1;width:78px;height:78px;flex:0 0 auto;display:grid;place-items:center;
+    background:radial-gradient(circle at 50% 35%, rgba(255,206,74,.28), rgba(255,206,74,.02) 70%);border:1px solid rgba(255,206,74,.4);border-radius:22px;animation:bob 4s ease-in-out infinite}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+  .heroInfo{flex:1;min-width:0}
+  .heroName{font-family:var(--display);font-weight:600;font-size:20px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+  .lvlbadge{font-family:var(--body);font-weight:800;font-size:11px;color:var(--bg-1);background:var(--gold);padding:2px 9px;border-radius:20px}
+  .xpbar{margin-top:9px;height:14px;border-radius:20px;background:rgba(0,0,0,.35);overflow:hidden;border:1px solid var(--border)}
+  .xpfill{height:100%;border-radius:20px;background:linear-gradient(90deg,var(--green),#9ff5cd);transition:width .6s cubic-bezier(.2,.8,.2,1);box-shadow:0 0 14px rgba(92,224,160,.6)}
+  .xptext{font-size:11px;font-weight:700;color:var(--muted);margin-top:5px}
+  .stats{display:flex;gap:10px;margin-top:14px}
+  .stat{flex:1;background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:10px 8px;text-align:center}
+  .stat .v{font-family:var(--display);font-weight:700;font-size:20px;display:flex;align-items:center;justify-content:center;gap:5px}
+  .stat .l{font-size:10px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin-top:2px}
+  .gold .v{color:var(--gold)} .streak .v{color:var(--orange)} .prog .v{color:var(--blue)}
+  .flame{animation:flick 1.1s infinite alternate}@keyframes flick{from{transform:rotate(-4deg)}to{transform:rotate(4deg) scale(1.12)}}
+
+  .tabs{display:flex;gap:8px;margin:18px 0 14px}
+  .tab{flex:1;font-family:var(--display);font-weight:600;font-size:14px;color:var(--muted);background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:11px 6px;cursor:pointer;transition:.18s;display:flex;align-items:center;justify-content:center;gap:6px}
+  .tab.active{color:var(--text);background:linear-gradient(150deg,rgba(157,140,255,.35),rgba(255,107,157,.18));border-color:rgba(157,140,255,.5)}
+  .tab:active{transform:scale(.97)}
+
+  .section{margin-bottom:18px}
+  .secHead{font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin:0 4px 8px;display:flex;align-items:center;gap:7px}
+  .quest{display:flex;align-items:center;gap:13px;background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:13px 14px;margin-bottom:9px;cursor:pointer;transition:.15s;user-select:none}
+  .quest:active{transform:scale(.985)} .quest:hover{border-color:rgba(255,255,255,.22)}
+  .check{width:30px;height:30px;flex:0 0 auto;border-radius:10px;border:2px solid var(--muted);display:grid;place-items:center;font-size:18px;color:transparent;transition:.18s}
+  .qemoji{font-size:24px;width:30px;text-align:center;flex:0 0 auto}
+  .qname{flex:1;font-weight:700;font-size:16px}
+  .qreward{font-size:12px;font-weight:800;color:var(--muted);text-align:right;line-height:1.5;flex:0 0 auto}
+  .qreward .xp{color:var(--green)} .qreward .gp{color:var(--gold)}
+  .quest.done{background:rgba(92,224,160,.08);border-color:rgba(92,224,160,.35)}
+  .quest.done .check{background:var(--green);border-color:var(--green);color:var(--bg-1)}
+  .quest.done .qname{text-decoration:line-through;color:var(--muted)}
+  .bonus{background:linear-gradient(150deg,rgba(255,206,74,.16),rgba(255,138,76,.10));border:1px dashed rgba(255,206,74,.5);border-radius:16px;padding:13px 15px;display:flex;align-items:center;gap:11px;margin-top:4px}
+  .bonus.hit{background:linear-gradient(150deg,rgba(255,206,74,.3),rgba(255,138,76,.2));border-style:solid}
+  .bonus .be{font-size:24px} .bonus .bt{flex:1;font-weight:800;font-size:14px} .bonus .bt small{display:block;font-weight:700;color:var(--muted);font-size:12px}
+
+  .reward{display:flex;align-items:center;gap:13px;background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:13px 14px;margin-bottom:9px}
+  .reward .re{font-size:26px;width:34px;text-align:center;flex:0 0 auto} .reward .rn{flex:1;font-weight:700;font-size:15px}
+  .buy{font-family:var(--display);font-weight:600;font-size:14px;border:none;border-radius:12px;padding:9px 13px;cursor:pointer;background:var(--gold);color:#5a3d00;display:flex;align-items:center;gap:5px;transition:.15s;white-space:nowrap}
+  .buy:active{transform:scale(.95)} .buy:disabled{background:rgba(255,255,255,.08);color:var(--muted);cursor:not-allowed}
+
+  .gz{background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:16px}
+  .gzlbl{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:14px 0 8px}.gzlbl:first-child{margin-top:0}
+  .erow{display:flex;gap:7px;align-items:center;margin-bottom:7px}
+  .erow input,.erow select{font-family:var(--body);font-weight:700;background:rgba(0,0,0,.3);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:9px 10px;font-size:14px;min-width:0}
+  .erow .ie{width:48px;text-align:center;flex:0 0 auto} .erow .it{flex:1} .erow .in{width:62px;flex:0 0 auto;text-align:center} .erow select{flex:0 0 auto}
+  .del{background:rgba(255,107,157,.16);border:1px solid rgba(255,107,157,.4);color:var(--coral);border-radius:10px;width:38px;height:38px;flex:0 0 auto;cursor:pointer;font-size:16px}.del:active{transform:scale(.92)}
+  .addbtn{font-family:var(--display);font-weight:600;width:100%;background:rgba(92,224,160,.14);border:1px dashed rgba(92,224,160,.5);color:var(--green);border-radius:12px;padding:11px;cursor:pointer;font-size:14px;margin-top:4px}
+  .resetbtn{font-family:var(--display);font-weight:600;width:100%;background:rgba(255,107,157,.12);border:1px solid rgba(255,107,157,.4);color:var(--coral);border-radius:12px;padding:11px;cursor:pointer;font-size:14px;margin-top:18px}
+  .pinwrap{display:flex;gap:8px;align-items:center;margin-top:8px}.pinwrap input{width:90px}
+
+  /* profile picker */
+  .profiles{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin:6px 0 4px}
+  .pcard{width:120px;background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:16px 10px;cursor:pointer;transition:.15s}
+  .pcard:hover{border-color:var(--violet)} .pcard:active{transform:scale(.96)}
+  .pcard .pe{font-size:42px} .pcard .pn{font-family:var(--display);font-weight:600;font-size:16px;margin-top:6px}
+  .pcard .pl{font-size:11px;font-weight:800;color:var(--gold);margin-top:2px}
+  .pcard.add{border-style:dashed;color:var(--green);display:grid;place-items:center;min-height:118px}
+
+  .gate{text-align:center;padding:8px}.gate .lock{font-size:42px}
+  .gate h3{font-family:var(--display);font-weight:600;margin:8px 0 4px;font-size:20px}
+  .gate p{color:var(--muted);font-size:13px;margin:0 0 14px}
+  .gate input{font-size:24px;letter-spacing:10px;text-align:center;width:160px;padding:10px;border-radius:12px;background:rgba(0,0,0,.3);border:1px solid var(--border);color:var(--text);font-weight:800}
+  .gate button{display:block;margin:12px auto 0;font-family:var(--display);font-weight:600;font-size:15px;background:var(--violet);color:#fff;border:none;border-radius:12px;padding:11px 26px;cursor:pointer}
+  .gate .hint{font-size:11px;color:var(--muted);margin-top:14px}
+
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);z-index:50;background:var(--panel-solid);border:1px solid var(--border);color:var(--text);font-weight:800;padding:12px 18px;border-radius:14px;box-shadow:0 16px 40px -16px #000;opacity:0;transition:.3s;font-size:14px}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .modal{position:fixed;inset:0;z-index:60;display:none;place-items:center;background:rgba(8,7,18,.78);backdrop-filter:blur(4px);padding:20px}
+  .modal.show{display:grid}
+  .card{background:linear-gradient(160deg,var(--bg-2),var(--bg-3));border:1px solid rgba(255,206,74,.5);border-radius:24px;padding:30px 26px;text-align:center;max-width:320px;box-shadow:0 30px 70px -20px #000;animation:pop .4s cubic-bezier(.2,1.4,.4,1)}
+  @keyframes pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+  .card .big{font-size:64px;animation:bob 2s infinite}
+  .card h2{font-family:var(--display);font-weight:700;color:var(--gold);font-size:26px;margin:6px 0 4px}
+  .card p{color:var(--muted);font-weight:700;margin:0 0 18px}
+  .card button{font-family:var(--display);font-weight:600;font-size:16px;background:var(--gold);color:#5a3d00;border:none;border-radius:14px;padding:12px 30px;cursor:pointer}
+  .conf{position:fixed;top:-12px;z-index:55;font-size:18px;pointer-events:none;animation:fall linear forwards}
+  @keyframes fall{to{transform:translateY(105vh) rotate(540deg);opacity:.2}}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="stars" id="stars"></div>
+<div class="wrap">
+
+  <!-- SETUP (shown until keys are added) -->
+  <div id="screen-setup" class="hidden">
+    <div class="panelbox">
+      <div class="brand">⚙️ Setup needed</div>
+      <h1>Add your Supabase keys</h1>
+      <p class="sub">Open this file and replace the two values near the bottom of the script:</p>
+      <p class="note" style="text-align:left">
+        <span class="codez">SUPABASE_URL</span> — your project URL<br>
+        <span class="codez">SUPABASE_ANON_KEY</span> — your public anon key<br><br>
+        Both come from your Supabase project settings (API section). Once added and deployed, this screen disappears and the login appears. Full instructions are in the setup guide.
+      </p>
+    </div>
+  </div>
+
+  <!-- LOGIN (parent) -->
+  <div id="screen-login" class="hidden">
+    <div class="panelbox">
+      <div class="brand">✨ Arise &amp; Shine</div>
+      <h1>Parent sign-in</h1>
+      <p class="sub">Enter your email and we'll send a one-tap sign-in link. No password to remember.</p>
+      <input class="field" id="loginEmail" type="email" inputmode="email" placeholder="you@email.com" autocomplete="email">
+      <button class="pbtn" id="loginBtn" onclick="sendMagic()">Send my sign-in link</button>
+      <p class="note" id="loginMsg">You only need to do this once per device — the kid's device stays signed in afterward.</p>
+    </div>
+  </div>
+
+  <!-- PROFILE PICKER -->
+  <div id="screen-profile" class="hidden">
+    <div class="panelbox">
+      <div class="brand">🎮 Who's playing?</div>
+      <h1 style="margin-bottom:18px">Pick your hero</h1>
+      <div class="profiles" id="profileList"></div>
+      <p class="note">On each child's own device, sign in once and pick their hero — this device will remember it. <span id="manageHint"></span></p>
+      <button class="pbtn ghost" style="margin-top:14px" onclick="signOut()">Sign out</button>
+    </div>
+  </div>
+
+  <!-- GAME -->
+  <div id="screen-game" class="hidden">
+    <div class="hero">
+      <div class="topbar">
+        <div class="title"><span class="dot"></span> Quest Log</div>
+        <button class="switchbtn" onclick="showScreen('profile')">↺ Switch hero</button>
+      </div>
+      <div class="heroRow">
+        <div class="avatar" id="avatar">🥚</div>
+        <div class="heroInfo">
+          <div class="heroName"><span id="heroTitle">Mystery Egg</span><span class="lvlbadge" id="lvl">LVL 1</span></div>
+          <div class="xpbar"><div class="xpfill" id="xpfill" style="width:0%"></div></div>
+          <div class="xptext" id="xptext">0 / 100 XP</div>
+        </div>
+      </div>
+      <div class="stats">
+        <div class="stat gold"><div class="v"><span id="gold">0</span>🪙</div><div class="l">Gold</div></div>
+        <div class="stat streak"><div class="v"><span id="streak">0</span><span class="flame">🔥</span></div><div class="l">Day Streak</div></div>
+        <div class="stat prog"><div class="v" id="progv">0/0</div><div class="l">Today</div></div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="quests" onclick="switchTab('quests')">⚔️ Quests</div>
+      <div class="tab" data-tab="shop" onclick="switchTab('shop')">🛒 Shop</div>
+      <div class="tab" data-tab="grown" onclick="switchTab('grown')">🔒 Grown-ups</div>
+    </div>
+
+    <div id="tab-quests"></div>
+    <div id="tab-shop" class="hidden">
+      <div class="secHead">🛒 Treasure Shop — spend your gold</div>
+      <div id="shopList"></div>
+    </div>
+    <div id="tab-grown" class="hidden">
+      <div class="gz" id="gzGate">
+        <div class="gate">
+          <div class="lock">🔒</div><h3>Grown-up Zone</h3>
+          <p>Enter the PIN to edit quests, rewards &amp; heroes.</p>
+          <input id="pinInput" type="tel" maxlength="4" inputmode="numeric" placeholder="••••">
+          <button onclick="tryPin()">Unlock</button>
+          <div class="hint" id="pinHint">Default PIN is <b>1379</b> — change it once inside.</div>
+        </div>
+      </div>
+      <div class="gz hidden" id="gzPanel"></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="modal" id="modal"><div class="card">
+  <div class="big" id="luEmoji">🐣</div><h2 id="luTitle">Level Up!</h2><p id="luSub"></p>
+  <button onclick="closeModal()">Awesome!</button>
+</div></div>
+
+<script>
+/* ============ STARS ============ */
+(function(){let s='';for(let i=0;i<46;i++){s+=`<i style="left:${Math.random()*100}%;top:${Math.random()*100}%;animation-delay:${Math.random()*3}s"></i>`}document.getElementById('stars').innerHTML=s})();
+
+/* ============ GAME STATE SHAPE ============ */
+function defaultState(){return{
+  level:1, xp:0, gold:0, streak:0, lastDate:null, lastCompletedDate:null,
+  done:{}, bonusClaimed:false,
+  quests:[
+    {id:'q1',e:'🪥',n:'Brush teeth',type:'morning'},
+    {id:'q2',e:'👕',n:'Get dressed',type:'morning'},
+    {id:'q3',e:'🥣',n:'Eat breakfast',type:'morning'},
+    {id:'q4',e:'🎒',n:'Pack school bag',type:'morning'},
+    {id:'q5',e:'📚',n:'Do homework',type:'evening'},
+    {id:'q6',e:'🧹',n:'Tidy room',type:'evening'},
+    {id:'q7',e:'🪥',n:'Brush teeth (night)',type:'evening'},
+    {id:'q8',e:'📖',n:'Read for 20 min',type:'side'},
+    {id:'q9',e:'🧺',n:'Help with a chore',type:'side'},
+  ],
+  rewards:[
+    {id:'r1',e:'🎮',n:'30 min extra screen time',c:60},
+    {id:'r2',e:'🍕',n:'Pick what\u2019s for dinner',c:80},
+    {id:'r3',e:'🎬',n:'Choose movie night film',c:100},
+    {id:'r4',e:'🍦',n:'Ice cream trip',c:150},
+  ]
+}}
+const REWARD_XP={morning:20,evening:20,side:15};
+const REWARD_GP={morning:10,evening:10,side:18};
+const BONUS_XP=50, BONUS_GP=25;
+function xpNeeded(l){return 100+(l-1)*60}
+function avatarFor(l){if(l>=12)return['🐲','Elder Dragon'];if(l>=9)return['🐉','Mighty Dragon'];if(l>=6)return['🦅','Sky Hunter'];if(l>=4)return['🦎','Wyrmling'];if(l>=2)return['🐣','Hatchling'];return['🥚','Mystery Egg'];}
+
+/* ============ CONFIG — REPLACE THESE TWO VALUES ============ */
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';        // e.g. https://abcd1234.supabase.co
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+/* ========================================================== */
+
+let sb=null, profiles=[], currentProfile=null, S=defaultState();
+const LAST_KEY='questlog:lastProfile';
+const PIN_KEY='questlog:pin';
+function configured(){return SUPABASE_URL.indexOf('http')===0 && SUPABASE_ANON_KEY.length>20 && window.supabase;}
+function getPin(){try{return localStorage.getItem(PIN_KEY)||'1379';}catch(e){return '1379';}}
+function setPin(p){try{localStorage.setItem(PIN_KEY,p);}catch(e){}}
+
+/* ============ SCREENS ============ */
+function showScreen(name){
+  ['setup','login','profile','game'].forEach(s=>document.getElementById('screen-'+s).classList.toggle('hidden',s!==name));
+  if(name==='profile')renderProfiles();
+}
+
+/* ============ AUTH ============ */
+async function boot(){
+  if(!configured()){showScreen('setup');return;}
+  sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+  const {data:{session}}=await sb.auth.getSession();
+  sb.auth.onAuthStateChange((_e,s)=>{ if(s){afterLogin();} else {showScreen('login');} });
+  if(session){afterLogin();} else {showScreen('login');}
+}
+async function sendMagic(){
+  const email=document.getElementById('loginEmail').value.trim();
+  if(!email){toast('Enter your email first');return;}
+  const btn=document.getElementById('loginBtn'); btn.disabled=true; btn.textContent='Sending…';
+  try{
+    const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:window.location.href.split('#')[0]}});
+    if(error)throw error;
+    document.getElementById('loginMsg').innerHTML='📬 Check your email and tap the sign-in link. You can close this once you do.';
+  }catch(e){document.getElementById('loginMsg').textContent='Something went wrong: '+e.message;}
+  btn.disabled=false; btn.textContent='Send my sign-in link';
+}
+async function signOut(){ if(sb)await sb.auth.signOut(); try{localStorage.removeItem(LAST_KEY);}catch(e){} }
+
+async function afterLogin(){
+  await loadProfiles();
+  let last=null; try{last=localStorage.getItem(LAST_KEY);}catch(e){}
+  const p=profiles.find(x=>x.id===last);
+  if(p){openProfile(p);} else {showScreen('profile');}
+}
+async function loadProfiles(){
+  const {data,error}=await sb.from('profiles').select('*').order('created_at',{ascending:true});
+  if(error){toast('Load error: '+error.message);profiles=[];return;}
+  profiles=data||[];
+}
+
+/* ============ PROFILES ============ */
+function renderProfiles(){
+  const list=document.getElementById('profileList');
+  let html=profiles.map(p=>{const[e]=avatarFor((p.state&&p.state.level)||1);return `
+    <div class="pcard" onclick="openProfile(profiles.find(x=>x.id==='${p.id}'))">
+      <div class="pe">${esc(p.emoji||e)}</div>
+      <div class="pn">${esc(p.name)}</div>
+      <div class="pl">LVL ${(p.state&&p.state.level)||1}</div>
+    </div>`}).join('');
+  html+=`<div class="pcard add" onclick="addProfile()"><div style="font-size:32px">＋</div><div class="pn">Add hero</div></div>`;
+  list.innerHTML=html;
+  document.getElementById('manageHint').textContent=profiles.length?'To rename or remove heroes, open the Grown-up Zone inside a hero.':'';
+}
+async function addProfile(){
+  const name=prompt('New hero name (the child\u2019s name):'); if(!name)return;
+  const emoji=prompt('Pick an emoji for them:','🦊')||'🦊';
+  const {data,error}=await sb.from('profiles').insert({name:name.trim(),emoji:emoji.trim(),state:defaultState()}).select().single();
+  if(error){toast('Could not add: '+error.message);return;}
+  profiles.push(data); renderProfiles(); toast('Hero created! 🎉');
+}
+function openProfile(p){
+  if(!p)return;
+  currentProfile=p; S=Object.assign(defaultState(),p.state||{});
+  try{localStorage.setItem(LAST_KEY,p.id);}catch(e){}
+  dailyCheck(); showScreen('game'); render();
+}
+
+/* ============ SAVE (cloud, debounced) ============ */
+let saveTimer=null;
+function save(){
+  if(!currentProfile||!sb)return;
+  currentProfile.state=S;
+  if(saveTimer)clearTimeout(saveTimer);
+  saveTimer=setTimeout(async()=>{
+    const {error}=await sb.from('profiles').update({state:S}).eq('id',currentProfile.id);
+    if(error)toast('Save failed — check connection');
+  },400);
+}
+
+/* ============ DATE / DAILY ============ */
+function dkey(d){return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
+function today(){return dkey(new Date());}
+function yesterday(){const d=new Date();d.setDate(d.getDate()-1);return dkey(d);}
+function dailyCheck(){
+  const t=today();
+  if(S.lastDate!==t){S.done={};S.bonusClaimed=false;S.lastDate=t;}
+  if(S.lastCompletedDate!==t&&S.lastCompletedDate!==yesterday())S.streak=0;
+  save();
+}
+
+/* ============ GAME LOGIC ============ */
+function coreQuests(){return S.quests.filter(q=>q.type==='morning'||q.type==='evening');}
+function allCoreDone(){const c=coreQuests();return c.length>0&&c.every(q=>S.done[q.id]);}
+function grantXP(xp,gp){S.gold+=gp;S.xp+=xp;while(S.xp>=xpNeeded(S.level)){S.xp-=xpNeeded(S.level);S.level++;levelUp(S.level);}}
+function toggleQuest(id){
+  const q=S.quests.find(x=>x.id===id);if(!q)return;
+  if(S.done[id]){S.done[id]=false;grantXP(-REWARD_XP[q.type],-REWARD_GP[q.type]);if(S.gold<0)S.gold=0;if(S.xp<0)S.xp=0;}
+  else{S.done[id]=true;grantXP(REWARD_XP[q.type],REWARD_GP[q.type]);confetti(8);}
+  if(allCoreDone()&&!S.bonusClaimed){
+    S.bonusClaimed=true;grantXP(BONUS_XP,BONUS_GP);
+    const t=today();
+    if(S.lastCompletedDate===t){}else if(S.lastCompletedDate===yesterday()){S.streak++;S.lastCompletedDate=t;}else{S.streak=1;S.lastCompletedDate=t;}
+    confetti(40);toast('🏆 All quests done! Bonus + streak!');
+  }else if(!allCoreDone()&&S.bonusClaimed){
+    S.bonusClaimed=false;grantXP(-BONUS_XP,-BONUS_GP);if(S.gold<0)S.gold=0;
+    if(S.lastCompletedDate===today()){S.lastCompletedDate=yesterday();S.streak=Math.max(0,S.streak-1);}
+  }
+  save();render();
+}
+function buyReward(id){const r=S.rewards.find(x=>x.id===id);if(!r)return;if(S.gold<r.c){toast('Not enough gold yet!');return;}S.gold-=r.c;save();confetti(40);showUnlock(r);render();}
+
+/* ============ RENDER ============ */
+function render(){
+  const[ae,at]=avatarFor(S.level);
+  document.getElementById('avatar').textContent=ae;
+  document.getElementById('heroTitle').textContent=currentProfile?currentProfile.name:at;
+  document.getElementById('lvl').textContent='LVL '+S.level;
+  const need=xpNeeded(S.level);
+  document.getElementById('xpfill').style.width=Math.min(100,(S.xp/need)*100)+'%';
+  document.getElementById('xptext').textContent=S.xp+' / '+need+' XP';
+  document.getElementById('gold').textContent=S.gold;
+  document.getElementById('streak').textContent=S.streak;
+  const core=coreQuests(),cd=core.filter(q=>S.done[q.id]).length;
+  document.getElementById('progv').textContent=cd+'/'+core.length;
+  renderQuests();renderShop();
+}
+function questRow(q){const done=!!S.done[q.id];return `<div class="quest ${done?'done':''}" onclick="toggleQuest('${q.id}')"><div class="check">✓</div><div class="qemoji">${q.e}</div><div class="qname">${esc(q.n)}</div><div class="qreward"><span class="xp">+${REWARD_XP[q.type]} XP</span><br><span class="gp">+${REWARD_GP[q.type]} 🪙</span></div></div>`;}
+function renderQuests(){
+  const m=S.quests.filter(q=>q.type==='morning'),e=S.quests.filter(q=>q.type==='evening'),s=S.quests.filter(q=>q.type==='side');
+  let h='';
+  if(m.length)h+=`<div class="section"><div class="secHead">🌅 Morning Quests</div>${m.map(questRow).join('')}</div>`;
+  if(e.length)h+=`<div class="section"><div class="secHead">🌙 Evening Quests</div>${e.map(questRow).join('')}</div>`;
+  if(s.length)h+=`<div class="section"><div class="secHead">✨ Side Quests <span style="font-weight:700;text-transform:none;letter-spacing:0">(optional)</span></div>${s.map(questRow).join('')}</div>`;
+  const hit=allCoreDone();
+  h+=`<div class="bonus ${hit?'hit':''}"><div class="be">${hit?'🏆':'🎯'}</div><div class="bt">${hit?'Daily Bonus claimed!':'Finish all morning + evening quests'}<small>${hit?'Streak kept alive 🔥':`+${BONUS_XP} XP, +${BONUS_GP} 🪙 and +1 day streak`}</small></div></div>`;
+  document.getElementById('tab-quests').innerHTML=h;
+}
+function renderShop(){document.getElementById('shopList').innerHTML=S.rewards.map(r=>`<div class="reward"><div class="re">${r.e}</div><div class="rn">${esc(r.n)}</div><button class="buy" ${S.gold<r.c?'disabled':''} onclick="buyReward('${r.id}')">${r.c} 🪙</button></div>`).join('')||'<div class="note">No rewards yet — add some in the Grown-up Zone.</div>';}
+
+/* ============ GROWN-UP ZONE ============ */
+function tryPin(){const v=document.getElementById('pinInput').value.trim();if(v===getPin()){document.getElementById('gzGate').classList.add('hidden');document.getElementById('gzPanel').classList.remove('hidden');renderGrown();}else{document.getElementById('pinHint').innerHTML='❌ Wrong PIN, try again.';document.getElementById('pinInput').value='';}}
+function renderGrown(){
+  const qRow=q=>`<div class="erow"><input class="ie" value="${esc(q.e)}" oninput="editQ('${q.id}','e',this.value)"><input class="it" value="${esc(q.n)}" oninput="editQ('${q.id}','n',this.value)"><select onchange="editQ('${q.id}','type',this.value)"><option value="morning" ${q.type==='morning'?'selected':''}>🌅</option><option value="evening" ${q.type==='evening'?'selected':''}>🌙</option><option value="side" ${q.type==='side'?'selected':''}>✨</option></select><button class="del" onclick="delQ('${q.id}')">🗑</button></div>`;
+  const rRow=r=>`<div class="erow"><input class="ie" value="${esc(r.e)}" oninput="editR('${r.id}','e',this.value)"><input class="it" value="${esc(r.n)}" oninput="editR('${r.id}','n',this.value)"><input class="in" type="number" min="1" value="${r.c}" oninput="editR('${r.id}','c',this.value)"><button class="del" onclick="delR('${r.id}')">🗑</button></div>`;
+  document.getElementById('gzPanel').innerHTML=`
+    <div class="gzlbl">⚔️ ${esc(currentProfile?currentProfile.name:'')}'s Quests</div>${S.quests.map(qRow).join('')}<button class="addbtn" onclick="addQ()">＋ Add quest</button>
+    <div class="gzlbl">🛒 Rewards</div>${S.rewards.map(rRow).join('')}<button class="addbtn" onclick="addR()">＋ Add reward</button>
+    <div class="gzlbl">🦊 This hero</div>
+    <div class="erow"><input class="ie" id="hpEmoji" value="${esc(currentProfile?currentProfile.emoji:'🦊')}"><input class="it" id="hpName" value="${esc(currentProfile?currentProfile.name:'')}"><button class="addbtn" style="margin-top:0;width:auto;padding:9px 14px" onclick="saveHero()">Save</button></div>
+    <button class="resetbtn" style="background:rgba(255,107,157,.12)" onclick="deleteHero()">🗑 Delete this hero</button>
+    <div class="gzlbl">🔢 Change PIN</div>
+    <div class="pinwrap"><input id="newPin" type="tel" maxlength="4" inputmode="numeric" placeholder="${esc(getPin())}"><button class="addbtn" style="margin-top:0;width:auto;padding:9px 16px" onclick="savePin()">Save PIN</button></div>
+    <button class="resetbtn" onclick="resetProgress()">↺ Reset this hero's progress</button>`;
+}
+function editQ(id,f,v){const q=S.quests.find(x=>x.id===id);if(q){q[f]=v;save();render();}}
+function editR(id,f,v){const r=S.rewards.find(x=>x.id===id);if(r){r[f]=(f==='c'?Math.max(1,parseInt(v)||1):v);save();render();}}
+function delQ(id){S.quests=S.quests.filter(x=>x.id!==id);delete S.done[id];save();renderGrown();render();}
+function delR(id){S.rewards=S.rewards.filter(x=>x.id!==id);save();renderGrown();render();}
+function addQ(){S.quests.push({id:'q'+Date.now(),e:'⭐',n:'New quest',type:'morning'});save();renderGrown();render();}
+function addR(){S.rewards.push({id:'r'+Date.now(),e:'🎁',n:'New reward',c:50});save();renderGrown();render();}
+async function saveHero(){if(!currentProfile)return;currentProfile.name=document.getElementById('hpName').value.trim()||currentProfile.name;currentProfile.emoji=document.getElementById('hpEmoji').value.trim()||currentProfile.emoji;await sb.from('profiles').update({name:currentProfile.name,emoji:currentProfile.emoji}).eq('id',currentProfile.id);toast('Saved');render();}
+async function deleteHero(){if(!currentProfile)return;if(!confirm('Delete '+currentProfile.name+' and all their progress? This cannot be undone.'))return;await sb.from('profiles').delete().eq('id',currentProfile.id);profiles=profiles.filter(p=>p.id!==currentProfile.id);try{localStorage.removeItem(LAST_KEY);}catch(e){}currentProfile=null;showScreen('profile');}
+function savePin(){const v=document.getElementById('newPin').value.trim();if(/^\d{4}$/.test(v)){setPin(v);toast('🔢 PIN updated');}else{toast('PIN must be 4 digits');}}
+function resetProgress(){if(!confirm('Reset this hero back to level 1?'))return;const keepQ=S.quests,keepR=S.rewards;S=defaultState();S.quests=keepQ;S.rewards=keepR;save();renderGrown();render();toast('Fresh start! 🌱');}
+
+/* ============ TABS / EFFECTS ============ */
+function switchTab(t){document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));['quests','shop','grown'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t));}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2300);}
+function levelUp(l){const[e,t]=avatarFor(l);const evolved=avatarFor(l)[0]!==avatarFor(l-1)[0];document.getElementById('luEmoji').textContent=e;document.getElementById('luTitle').textContent='Level '+l+'!';document.getElementById('luSub').textContent=evolved?('Your hero evolved into a '+t+'!'):('You reached level '+l);document.getElementById('modal').classList.add('show');confetti(70);}
+function showUnlock(r){document.getElementById('luEmoji').textContent=r.e;document.getElementById('luTitle').textContent='Reward Unlocked!';document.getElementById('luSub').textContent=r.n+' — show this to a grown-up!';document.getElementById('modal').classList.add('show');}
+function closeModal(){document.getElementById('modal').classList.remove('show');}
+function confetti(n){const c=['#ffce4a','#5ce0a0','#ff6b9d','#5ad1ff','#9d8cff','#ff8a4c'],ic=['🎉','✨','⭐','🌟','🎊'];for(let i=0;i<n;i++){const d=document.createElement('div');d.className='conf';d.textContent=ic[i%ic.length];d.style.left=Math.random()*100+'vw';d.style.color=c[i%c.length];d.style.animationDuration=(1.6+Math.random()*1.4)+'s';d.style.fontSize=(14+Math.random()*16)+'px';document.body.appendChild(d);setTimeout(()=>d.remove(),3200);}}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&!document.getElementById('screen-login').classList.contains('hidden'))sendMagic();});
+boot();
+</script>
+</body>
+</html>
