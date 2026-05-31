@@ -329,7 +329,7 @@ async function sendCode(){
     if(error)throw error;
     document.getElementById('loginStep1').classList.add('hidden');
     document.getElementById('loginStep2').classList.remove('hidden');
-    document.getElementById('loginMsg').innerHTML='📬 We emailed a 6-digit code to <b>'+esc(email)+'</b>. It may take a minute.';
+    document.getElementById('loginMsg').innerHTML='📬 We emailed an 8-digit code to <b>'+esc(email)+'</b>. It may take a minute.';
     setTimeout(()=>{const c=document.getElementById('loginCode');if(c)c.focus();},100);
   }catch(e){document.getElementById('loginMsg').textContent='Something went wrong: '+e.message;}
   btn.disabled=false; btn.textContent='Send my code';
