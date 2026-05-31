@@ -161,7 +161,7 @@
   <!-- LOGIN (parent) -->
   <div id="screen-login" class="hidden">
     <div class="panelbox">
-      <div class="brand">✨ Welcome Home</div>
+      <div class="brand">✨ Arise &amp; Shine</div>
       <h1>Parent sign-in</h1>
       <!-- step 1: email -->
       <div id="loginStep1">
@@ -171,8 +171,8 @@
       </div>
       <!-- step 2: code -->
       <div id="loginStep2" class="hidden">
-        <p class="sub">Check your email for a 6-digit code and type it in below.</p>
-        <input class="field" id="loginCode" type="tel" inputmode="numeric" maxlength="6" placeholder="123456" style="letter-spacing:8px;text-align:center;font-size:22px">
+        <p class="sub">Check your email for the code and type (or paste) it in below.</p>
+        <input class="field" id="loginCode" type="tel" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="Enter code" style="letter-spacing:6px;text-align:center;font-size:22px">
         <button class="pbtn" id="verifyBtn" onclick="verifyCode()">Verify &amp; sign in</button>
         <button class="pbtn ghost" style="margin-top:8px" onclick="backToEmail()">← Use a different email</button>
       </div>
@@ -279,7 +279,7 @@ function xpNeeded(l){return 100+(l-1)*60}
 function avatarFor(l){if(l>=12)return['🐲','Elder Dragon'];if(l>=9)return['🐉','Mighty Dragon'];if(l>=6)return['🦅','Sky Hunter'];if(l>=4)return['🦎','Wyrmling'];if(l>=2)return['🐣','Hatchling'];return['🥚','Mystery Egg'];}
 
 /* ============ CONFIG — REPLACE THESE TWO VALUES ============ */
-const SUPABASE_URL = 'https://knlcbqksuiadxvvedzne.supabase.co';        // e.g. https://abcd1234.supabase.co
+const SUPABASE_URL = 'https://knlcbqksuiadxvvedzne.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtubGNicWtzdWlhZHh2dmVkem5lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwOTM2ODIsImV4cCI6MjA5NTY2OTY4Mn0.RrUcvC39UOjUIh-bGyNBK4leXfkXkzmZPBIBPWJt7O4';
 /* ========================================================== */
 
@@ -335,8 +335,8 @@ async function sendCode(){
   btn.disabled=false; btn.textContent='Send my code';
 }
 async function verifyCode(){
-  const token=document.getElementById('loginCode').value.trim();
-  if(token.length<6){toast('Enter the 6-digit code');return;}
+  const token=document.getElementById('loginCode').value.replace(/\D/g,'');
+  if(token.length<4){toast('Enter the code from your email');return;}
   const btn=document.getElementById('verifyBtn'); btn.disabled=true; btn.textContent='Checking…';
   try{
     const {error}=await sb.auth.verifyOtp({email:pendingEmail,token,type:'email'});
